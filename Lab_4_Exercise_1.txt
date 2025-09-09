@@ -1,0 +1,52 @@
+function [t,y_exact,yM1,yM2] = lab4_ex1(y0,h,N)
+if nargin < 3, error('Provide y0, h and N'); end
+t = (0:N)' * h;
+y_exact = t + 1 + (y0 - 1) * exp(-100*t); % exact solution: y = t+1 + C e^{-100 t}
+
+
+% Preallocate
+yM1 = zeros(N+1,1);
+yM2 = zeros(N+1,1);
+
+
+% Initial values
+yM1(1) = y0;
+yM2(1) = y0;
+
+
+% For f(t,y) = -100 y + 100 t + 101
+% f_t = 100, f_y = -100. Higher mixed derivatives are zero.
+
+
+for n = 1:N
+tn = t(n);
+yn1 = yM1(n);
+f = -100*yn1 + 100*tn + 101;
+ft = 100;
+fy = -100;
+yM1(n+1) = yn1 + h*f + (h^2/2)*(ft + fy * f);
+
+
+% method 2 requires y''' = f_{tt} + 2 f_{ty} f + f_{yy} f^2 + f_y f_t + f_y^2 f
+% For this f: f_tt = 0, f_ty = 0, f_yy = 0
+% so y''' = f_y * f_t + f_y^2 * f = (-100)*100 + (10000)*f
+yM2(n+1) = yM2(n) + h*f + (h^2/2)*(ft + fy * f) + (h^3/6)*((-100)*100 + (10000)*f);
+end
+
+
+% (Optional) display a short table of errors at final time
+err1 = abs(yM1 - y_exact);
+err2 = abs(yM2 - y_exact);
+fprintf('\nFinal errors at t = %g: method1 = %e, method2 = %e\n', t(end), err1(end), err2(end));
+
+
+% (Optional) plots
+figure('Name','lab4\_ex1: Solutions');
+plot(t,y_exact,'k-','LineWidth',1.5); hold on;
+plot(t,yM1,'bo-');
+plot(t,yM2,'r*-');
+xlabel('t'); ylabel('y(t)'); grid on;
+legend('exact','method1','method2','Location','best');
+title('Comparison: exact vs methods');
+hold off;
+end

@@ -1,0 +1,72 @@
+% File: lab1_exercise1.m
+
+function lab1_exercise1(y0, h, N)
+% Solves the IVP y' = -100y + 100t + 101 with y(0)=y0 using Euler's
+% and Backward Euler's methods and compares to the exact solution.
+%
+% Inputs:
+%   y0 - Initial value y(0)
+%   h  - Step size
+%   N  - Number of steps
+
+% --- Setup ---
+t_final = N * h;
+t = 0:h:t_final; % Time vector
+
+% Initialize solution vectors
+yE = zeros(1, N + 1);      % Euler's method solution
+yBE = zeros(1, N + 1);     % Backward Euler solution
+
+% Set initial conditions
+yE(1) = y0;
+yBE(1) = y0;
+
+% --- Numerical Integration Loop ---
+for n = 1:N
+    % Euler's Method (Explicit)
+    yE(n+1) = yE(n) + h * (-100 * yE(n) + 100 * t(n) + 101);
+
+    % Backward Euler's Method (Implicit)
+    yBE(n+1) = (yBE(n) + h * (100 * t(n+1) + 101)) / (1 + 100 * h);
+end
+
+% --- Exact Solution ---
+y_exact_func = @(t_val) t_val + 1 + (y0 - 1) * exp(-100 * t_val);
+y_exact = y_exact_func(t);
+
+% --- Plotting ---
+figure;
+plot(t, y_exact, 'k-', 'LineWidth', 2.5, 'DisplayName', 'Exact Solution');
+hold on;
+plot(t, yE, 'b--o', 'MarkerSize', 5, 'DisplayName', 'Euler''s Method');
+plot(t, yBE, 'r--x', 'MarkerSize', 7, 'DisplayName', 'Backward Euler');
+hold off;
+
+title(['Solution for y(0) = ', num2str(y0), ', h = ', num2str(h)]);
+xlabel('Time (t)');
+ylabel('y(t)');
+legend('Location', 'best');
+grid on;
+set(gca, 'FontSize', 12);
+
+end
+
+% File: run_exercise1.m
+
+% --- Parameters ---
+h = 0.1;
+N = 10;
+y0_values = [1, 0.99, 1.01];
+
+% --- Run for each initial condition ---
+for y0 = y0_values
+    lab1_exercise1(y0, h, N);
+end
+
+% --- Observations ---
+fprintf('--- Observations for Exercise 1 ---\n');
+fprintf('The ODE y'' = -100y + 100t + 101 is a stiff equation due to the large negative coefficient of y (-100).\n');
+fprintf('The stability condition for Euler''s method on this problem requires h < 2/100 = 0.02.\n');
+fprintf('1. Instability of Euler''s Method: Since we use h = 0.1, which violates the stability condition, Euler''s method becomes unstable. This is clearly visible in the plots for y0=0.99 and y0=1.01, where the blue line (Euler) oscillates wildly with growing amplitude.\n');
+fprintf('2. Stability of Backward Euler: Backward Euler is an A-stable method, so it remains stable even for this large step size. The red line (Backward Euler) approximates the true solution reasonably well in all cases, correctly capturing the long-term behavior y(t) ≈ t+1.\n');
+fprintf('3. Special Case (y0=1): When y0 = 1, the transient term (y0-1)exp(-100t) is zero, so the exact solution is just y(t)=t+1. Both methods perform better here, but the instability of Euler''s method is still present, though not as explosive.\n');

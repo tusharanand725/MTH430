@@ -1,0 +1,89 @@
+function [Px,Py,Pz] = lab4_ex2(lat0, lon0, v0, gam0, phi0, h, T)
+lon = deg2rad(lon0);
+gam = deg2rad(gam0);
+psi = deg2rad(phi0);
+
+
+% determine N (closest integer) and adjusted h0 = T/N
+N = max(1, round(T / h));
+h0 = T / N;
+
+
+% initial position (on spherical earth surface)
+r_vec = r0 * [ cos(lat)*cos(lon); cos(lat)*sin(lon); sin(lat) ];
+
+
+% rotation matrix from local launch coordinates to ECI (given in prompt)
+R = [ -sin(lat)*cos(lon), sin(lon), cos(lat)*cos(lon);
+-sin(lat)*sin(lon), -cos(lon), cos(lat)*sin(lon);
+cos(lat), 0, sin(lat) ];
+
+
+% launch velocity in local coordinates [along path, cross-range, up]
+v_local = [ v0*cos(gam)*cos(psi); v0*cos(gam)*sin(psi); v0*sin(gam) ];
+V0 = R * v_local; % ECI initial velocity
+
+
+% initial state
+U = zeros(6, N+1);
+U(1:3,1) = r_vec;
+U(4:6,1) = V0;
+
+
+% dynamics: d/dt [r;v] = [v; g(r)]
+function a = accel(r)
+rx = r(1); ry = r(2); rz = r(3);
+r_norm = sqrt(rx^2 + ry^2 + rz^2);
+z2_r2 = (rz^2) / (r_norm^2);
+factor = 1 - (3/2) * J2 * (r0^2 / r_norm^2) * (5*z2_r2 - 1);
+ax = -mu * rx / r_norm^3 * factor;
+ay = -mu * ry / r_norm^3 * factor;
+az = -mu * rz / r_norm^3 * (1 - (3/2)*J2*(r0^2/r_norm^2)*(5*z2_r2 - 3));
+a = [ax; ay; az];
+end
+
+
+% RK4 integration
+for n = 1:N
+rn = U(1:3,n);
+vn = U(4:6,n);
+
+
+k1r = vn;
+k1v = accel(rn);
+
+
+k2r = vn + 0.5*h0*k1v;
+k2v = accel(rn + 0.5*h0*k1r);
+
+
+k3r = vn + 0.5*h0*k2v;
+k3v = accel(rn + 0.5*h0*k2r);
+
+
+k4r = vn + h0*k3v;
+k4v = accel(rn + h0*k3r);
+
+
+U(1:3,n+1) = rn + (h0/6)*(k1r + 2*k2r + 2*k3r + k4r);
+U(4:6,n+1) = vn + (h0/6)*(k1v + 2*k2v + 2*k3v + k4v);
+end
+
+
+Px = U(1,:).'; Py = U(2,:).'; Pz = U(3,:).';
+
+
+% plots
+t = (0:N)'*h0;
+figure('Name','Trajectory: components vs time');
+plot(t,Px,'-','LineWidth',1.2); hold on;
+plot(t,Py,'--','LineWidth',1.2);
+plot(t,Pz,':','LineWidth',1.2); hold off; grid on;
+xlabel('t (s)'); ylabel('ECI position (m)'); legend('P_x','P_y','P_z');
+title('Projectile ECI position components vs time');
+
+
+figure('Name','Trajectory: 3D');
+plot3(Px,Py,Pz,'LineWidth',1.2); grid on; xlabel('x (m)'); ylabel('y (m)'); zlabel('z (m)');
+title('3D trajectory (ECI)');
+end

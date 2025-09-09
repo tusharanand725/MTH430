@@ -1,0 +1,51 @@
+function [t, Y] = lab1_exercise2(N, T, a1, a2, b1, b2, y10, y20)
+% Basic input validation
+if nargin < 8
+error(['Usage: [t,Y] = lab1_exercise2(N,T,a1,a2,b1,b2,y10,y20) ', ...
+'with all 8 inputs provided.']);
+end
+if N <= 0 || N ~= floor(N)
+error('N must be a positive integer.');
+end
+if T <= 0
+error('T must be positive.');
+end
+
+
+h = T / N;
+t = linspace(0, T, N+1)';
+Y = zeros(N+1, 2);
+Y(1,:) = [y10, y20];
+
+
+% Euler time-stepping
+for n = 1:N
+y1 = Y(n,1);
+y2 = Y(n,2);
+
+
+f1 = y1 * (a1 - b1 * y2);
+f2 = y2 * (-a2 + b2 * y1);
+
+
+Y(n+1,1) = max(y1 + h*f1, 0); % keep nonnegative
+Y(n+1,2) = max(y2 + h*f2, 0);
+end
+
+
+% ---- PLOTS ----
+% Time series
+figure('Name','Predator-Prey: time series');
+plot(t, Y(:,1), '-', 'LineWidth', 1.4); hold on;
+plot(t, Y(:,2), '--', 'LineWidth', 1.4); hold off; grid on;
+xlabel('t'); ylabel('Population');
+legend({'y_1(t) = prey','y_2(t) = predator'}, 'Location','best');
+title('Lotka–Volterra via Forward Euler');
+
+
+% Phase portrait
+figure('Name','Predator-Prey: phase portrait');
+plot(Y(:,1), Y(:,2), '-', 'LineWidth', 1.4); grid on;
+xlabel('y_1 (prey)'); ylabel('y_2 (predator)');
+title('Phase plot: y_2 vs y_1');
+end

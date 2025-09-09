@@ -1,0 +1,123 @@
+% File: lab2_exercise2.m
+
+function lab2_exercise2(N, T, a1, a2, b1, b2, y10, y20, method)
+% Solves the Lotka-Volterra predator-prey model using a specified method.
+%
+% Inputs:
+%   N, T, a1, a2, b1, b2, y10, y20 - Problem parameters
+%   method - String: 'euler' or 'backward_euler'
+
+% --- Setup ---
+h = T / N;
+t = 0:h:T;
+y1 = zeros(1, N + 1);
+y2 = zeros(1, N + 1);
+y1(1) = y10;
+y2(1) = y20;
+
+% --- Time Stepping Loop ---
+if strcmpi(method, 'euler')
+    % --- Forward Euler Method ---
+    for n = 1:N
+        y1_n = y1(n);
+        y2_n = y2(n);
+        
+        y1(n+1) = y1_n + h * y1_n * (a1 - b1 * y2_n);
+        y2(n+1) = y2_n + h * y2_n * (-a2 + b2 * y1_n);
+    end
+    methodTitle = 'Forward Euler';
+    
+elseif strcmpi(method, 'backward_euler')
+    % --- Backward Euler (using Newton's method for the non-linear solve) ---
+    for n = 1:N
+        y1_n = y1(n);
+        y2_n = y2(n);
+        
+        % Newton's method to solve for x_k = [y1(n+1); y2(n+1)]
+        x_k = [y1_n; y2_n]; % Initial guess is the previous point
+        
+        for k = 1:10 % Iterate Newton's method
+            x = x_k(1); y = x_k(2);
+            
+            % F(x,y) = 0, where F is the implicit BE formula rearranged
+            F_val = [x - y1_n - h*x*(a1 - b1*y);
+                     y - y2_n - h*y*(-a2 + b2*x)];
+            
+            if norm(F_val) < 1e-9; break; end % Check for convergence
+            
+            % Jacobian matrix J of F
+            J = [1 - h*(a1 - b1*y),   h*b1*x;
+                 -h*b2*y,             1 - h*(-a2 + b2*x)];
+            
+            % Newton iteration step: x_k+1 = x_k - J^-1 * F
+            delta_x = -J \ F_val;
+            x_k = x_k + delta_x;
+        end
+        y1(n+1) = x_k(1);
+        y2(n+1) = x_k(2);
+    end
+    methodTitle = 'Backward Euler';
+else
+    error('Invalid method. Use ''euler'' or ''backward_euler''.');
+end
+
+% --- Plotting ---
+% Plot 1: Populations vs. Time
+figure;
+plot(t, y1, 'b-', 'LineWidth', 1.5, 'DisplayName', 'Prey (y_1)');
+hold on;
+plot(t, y2, 'r-', 'LineWidth', 1.5, 'DisplayName', 'Predator (y_2)');
+hold off;
+title(['Populations vs. Time (N = ', num2str(N), ') - ', methodTitle]);
+xlabel('Time t');
+ylabel('Population');
+legend('Location', 'northeast');
+grid on;
+
+% Plot 2: Phase Plane Trajectory
+figure;
+plot(y1, y2, 'k-', 'LineWidth', 1.5);
+hold on;
+plot(y1(1), y2(1), 'go', 'MarkerFaceColor', 'g', 'MarkerSize', 8);
+plot(y10, y20, 'g<', 'MarkerFaceColor', 'g', 'MarkerSize', 10, 'DisplayName', 'Start');
+plot(y1(end), y2(end), 'rs', 'MarkerFaceColor', 'r', 'MarkerSize', 8, 'DisplayName', 'End');
+hold off;
+title(['Phase Plane Trajectory (N = ', num2str(N), ') - ', methodTitle]);
+xlabel('Prey Population (y_1)');
+ylabel('Predator Population (y_2)');
+axis equal; grid on;
+legend;
+end
+
+ % File: run_exercise2.m
+
+% --- Parameters ---
+T = 250;
+a1 = 1; b1 = 0.1;
+a2 = 0.5; b2 = 0.02;
+y10 = 100; y20 = 10;
+N_values = [4000, 3500, 3000, 2500, 2000, 1500, 1000, 500];
+
+% --- Run Simulations ---
+for N = N_values
+    fprintf('Running simulation for N = %d\n', N);
+    
+    % Call function for Euler's method
+    lab2_exercise2(N, T, a1, a2, b1, b2, y10, y20, 'euler');
+    
+    % Call function for Backward Euler's method
+    lab2_exercise2(N, T, a1, a2, b1, b2, y10, y20, 'backward_euler');
+    
+    % You can uncomment the line below to pause after each N
+    % pause; 
+end
+
+% --- Final Observations ---
+fprintf('\n--- Observations for Exercise 2 ---\n');
+fprintf('The Lotka-Volterra equations model a conservative system, meaning the true solution traces a closed loop in the phase plane.\n');
+fprintf('\nForward Euler Method:\n');
+fprintf('This explicit method artificially adds energy to the system. This is seen in the phase plots as an OUTWARD SPIRAL. The population oscillations grow over time, which is physically incorrect. This effect is worst for small N (large step size h).\n');
+fprintf('\nBackward Euler Method:\n');
+fprintf('This implicit method is dissipative, meaning it artificially removes energy. This is seen in the phase plots as an INWARD SPIRAL. The population oscillations decay over time, converging to the equilibrium point at (y1=25, y2=10). This is also physically incorrect. The effect is worst for small N.\n');
+fprintf('\nConclusion:\n');
+fprintf('Neither first-order method is suitable for long-term simulations of this system. As N increases (h decreases), both methods produce better results for the given time T, but their fundamental flaws (energy gain/loss) remain.\n');

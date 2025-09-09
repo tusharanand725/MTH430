@@ -1,0 +1,99 @@
+function [E, A, T, X, Y, VX, VY] = lab3_ex2b(P, N, M, k, e)
+% function [E,A,T,X,Y,VX,VY] = lab3_ex2b(P,N,M,k,e)
+% Solve orbital problem using k-step Adams-Moulton (k = 1,2,3) with M fixed-point iterations.
+% - P: number of periods
+% - N: steps per period
+% - M: number of fixed-point iterations for implicit solve each step
+% - k: order of AM method (1,2,3)
+% - e: eccentricity
+%
+% Returns same outputs as lab3_ex2a.
+
+if ~(k>=1 && k<=3)
+    error('k must be 1,2, or 3');
+end
+
+GM = 1;
+h = 2*pi/N;
+total_steps = P * N;
+T = (0:total_steps)*h;
+
+% initial conditions
+x0 = 1 - e;
+y0 = 0;
+vx0 = 0;
+vy0 = sqrt((1+e)/(1-e));
+
+U = zeros(4, total_steps+1);
+U(:,1) = [x0; y0; vx0; vy0];
+
+f = @(U) [
+    U(3);
+    U(4);
+    -GM * U(1) / ( (U(1)^2 + U(2)^2)^(3/2) );
+    -GM * U(2) / ( (U(1)^2 + U(2)^2)^(3/2) );
+];
+
+% startup with RK4 to get first k-1 steps
+for n = 1:(k-1)
+    un = U(:,n);
+    k1 = f(un);
+    k2 = f(un + 0.5*h*k1);
+    k3 = f(un + 0.5*h*k2);
+    k4 = f(un + h*k3);
+    U(:,n+1) = un + (h/6)*(k1 + 2*k2 + 2*k3 + k4);
+end
+
+% maintain F values
+F = zeros(4, total_steps+1);
+for n = 1:k
+    F(:,n) = f(U(:,n));
+end
+
+% AM formula coefficients:
+% AM1 (k=1): y_{n+1} = y_n + h * f_{n+1}  (backward Euler)
+% AM2 (k=2): y_{n+1} = y_n + h*(1/2 f_{n+1} + 1/2 f_n)  (trapezoid)
+% AM3 (k=3): y_{n+1} = y_n + h*(5/12 f_{n+1} + 8/12 f_n - 1/12 f_{n-1})
+
+for n = k:total_steps
+    % predictor: use explicit AB of same order as predictor for starting guess
+    switch k
+        case 1
+            Upred = U(:,n); % trivial predictor for BE
+        case 2
+            Upred = U(:,n) + h*(3/2 * F(:,n) - 1/2 * F(:,n-1));
+        case 3
+            Upred = U(:,n) + h*(23/12 * F(:,n) - 16/12 * F(:,n-1) + 5/12 * F(:,n-2));
+    end
+
+    % fixed-point iterations to solve for U_{n+1}
+    Unew = Upred;
+    for iter = 1:M
+        switch k
+            case 1
+                % BE: Unew = U(:,n) + h * f(Unew)
+                Unew = U(:,n) + h * f(Unew);
+            case 2
+                % AM2: Unew = U(:,n) + h*(1/2 f(Unew) + 1/2 F(:,n))
+                Unew = U(:,n) + h*(0.5 * f(Unew) + 0.5 * F(:,n));
+            case 3
+                % AM3: Unew = U(:,n) + h*(5/12 f(Unew) + 8/12 F(:,n) - 1/12 F(:,n-1))
+                Unew = U(:,n) + h*(5/12 * f(Unew) + 8/12 * F(:,n) - 1/12 * F(:,n-1));
+        end
+    end
+
+    U(:,n+1) = Unew;
+    F(:,n+1) = f(U(:,n+1));
+end
+
+% unpack
+X = U(1,:);
+Y = U(2,:);
+VX = U(3,:);
+VY = U(4,:);
+
+r = sqrt(X.^2 + Y.^2);
+E = 0.5*(VX.^2 + VY.^2) - 1./r;
+A = X .* VY - Y .* VX;
+
+end

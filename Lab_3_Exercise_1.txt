@@ -1,0 +1,52 @@
+function [y,yEX,yEM] = lab3_ex1(y0,h,N)
+% [y,yEX,yEM] = lab3_ex1(y0,h,N)
+% Solve y' = -100 y + 100 t + 101, y(0)=y0 using 2-step Adams-Moulton (AM2)
+% - yEX: use exact y(h) as the second start value
+% - yEM: use forward Euler to get y1
+% - y: set equal to yEX (primary return)
+%
+% Outputs are vectors of length N+1 corresponding to t_n = n*h, n=0..N.
+
+t = (0:N)*h;
+
+% exact solution function
+y_exact = @(t) (y0 - 1)*exp(-100*t) + t + 1;
+
+% RHS f(t,y)
+f = @(t,y) -100*y + 100*t + 101;
+
+% Initialize storage
+yEX = zeros(1,N+1);
+yEM = zeros(1,N+1);
+
+% initial value
+yEX(1) = y0;
+yEM(1) = y0;
+
+% compute y1 for yEX using exact formula
+yEX(2) = y_exact(h);
+
+% compute y1 for yEM using forward Euler
+yEM(2) = y0 + h * f(0,y0);
+
+% Now iterate AM2 (2-step Adams-Moulton) implicit formula
+% AM2: y_{n+1} = y_n + (h/2)[ f_{n+1} + f_n ]
+% For our linear problem we can solve for y_{n+1} explicitly:
+% y_{n+1}*(1 + 50*h) = y_n + (h/2)*(-100*y_n + 100*(t_{n+1}+t_n) + 202)
+
+den = 1 + 50*h; % constant at each step
+
+for n = 2:N
+    tn = t(n);
+    tnp1 = t(n+1);
+    % RHS for EX
+    rhsEX = yEX(n) + (h/2)*(-100*yEX(n) + 100*(tnp1 + tn) + 202);
+    yEX(n+1) = rhsEX / den;
+    % RHS for EM
+    rhsEM = yEM(n) + (h/2)*(-100*yEM(n) + 100*(tnp1 + tn) + 202);
+    yEM(n+1) = rhsEM / den;
+end
+
+% Primary return
+y = yEX;
+end

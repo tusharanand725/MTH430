@@ -1,0 +1,71 @@
+% File: lab5_ex.m
+
+function [t, y1, y2, y3, y4] = lab5_ex(y0, h, N)
+% Solves the IVP y' = -100y + 100t + 101 using four different
+% Runge-Kutta methods.
+%
+% Outputs:
+%   t  - Vector of time points t_n
+%   y1 - Solution using Heun's method (RK2)
+%   y2 - Solution using Modified Euler method (RK2)
+%   y3 - Solution using Heun's 3-stage method (RK3)
+%   y4 - Solution using Runge-Kutta-Simpson 4-stage method (Classic RK4)
+
+% --- 1. Setup ---
+
+% Define the ODE function f(t,y)
+f = @(t, y) -100*y + 100*t + 101;
+
+% Create the time vector
+t_final = N * h;
+t = 0:h:t_final;
+
+% Initialize the solution vectors (N+1 points)
+y1 = zeros(1, N + 1); % Heun's
+y2 = zeros(1, N + 1); % Modified Euler
+y3 = zeros(1, N + 1); % Heun's 3-stage
+y4 = zeros(1, N + 1); % Classic RK4
+
+% Set the initial condition y(0) = y0 for all methods
+y1(1) = y0;
+y2(1) = y0;
+y3(1) = y0;
+y4(1) = y0;
+
+
+% --- 2. Main Loop for Numerical Integration ---
+
+% Iterate from the first point to the second-to-last point
+for n = 1:N
+    % Current time t_n
+    t_n = t(n);
+
+    % --- Method 1: Heun's Method (RK2) ---
+    y1_n = y1(n);
+    k1 = f(t_n, y1_n);
+    k2 = f(t_n + h, y1_n + h*k1);
+    y1(n+1) = y1_n + (h/2) * (k1 + k2);
+
+    % --- Method 2: Modified Euler Method (RK2, Midpoint) ---
+    y2_n = y2(n);
+    k1 = f(t_n, y2_n);
+    k2 = f(t_n + h/2, y2_n + (h/2)*k1);
+    y2(n+1) = y2_n + h * k2;
+
+    % --- Method 3: Heun's 3-Stage Method (RK3) ---
+    y3_n = y3(n);
+    k1 = f(t_n, y3_n);
+    k2 = f(t_n + h/3, y3_n + (h/3)*k1);
+    k3 = f(t_n + 2*h/3, y3_n + (2*h/3)*k2);
+    y3(n+1) = y3_n + (h/4) * (k1 + 3*k3);
+    
+    % --- Method 4: Runge-Kutta-Simpson 4-Stage Method (Classic RK4) ---
+    y4_n = y4(n);
+    k1 = f(t_n, y4_n);
+    k2 = f(t_n + h/2, y4_n + (h/2)*k1);
+    k3 = f(t_n + h/2, y4_n + (h/2)*k2);
+    k4 = f(t_n + h, y4_n + h*k3);
+    y4(n+1) = y4_n + (h/6) * (k1 + 2*k2 + 2*k3 + k4);
+end
+
+end

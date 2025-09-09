@@ -1,0 +1,90 @@
+function [E, A, T, X, Y, VX, VY] = lab3_ex2a(P, N, k, e)
+% function [E,A,T,X,Y,VX,VY] = lab3_ex2a(P,N,k,e)
+% Solve orbital problem using k-step Adams-Bashforth (k = 1,2,3).
+% - P: number of periods to simulate (each period = 2*pi)
+% - N: number of steps per period
+% - k: order of AB method (1,2 or 3)
+% - e: eccentricity (0, 0.5, 0.9)
+%
+% Returns:
+% E, A - vectors length PN+1 (energy and angular momentum at each step)
+% T, X, Y, VX, VY - time and state vectors for possible plotting.
+
+if ~(k>=1 && k<=3)
+    error('k must be 1,2, or 3');
+end
+
+% constants
+GM = 1;
+h = 2*pi/N;
+total_steps = P * N;
+T = (0:total_steps)*h;
+
+% initial conditions given in problem
+x0 = 1 - e;
+y0 = 0;
+vx0 = 0;
+vy0 = sqrt((1+e)/(1-e));
+
+% state vector: U = [x; y; vx; vy]
+U = zeros(4, total_steps+1);
+U(:,1) = [x0; y0; vx0; vy0];
+
+% function f(U) -> dU/dt
+f = @(U) [
+    U(3);
+    U(4);
+    -GM * U(1) / ( (U(1)^2 + U(2)^2)^(3/2) );
+    -GM * U(2) / ( (U(1)^2 + U(2)^2)^(3/2) );
+];
+
+% To start multistep we need k-1 extra steps; use RK4 for startup
+for n = 1:(k-1)
+    un = U(:,n);
+    tn = T(n);
+    k1 = f(un);
+    k2 = f(un + 0.5*h*k1);
+    k3 = f(un + 0.5*h*k2);
+    k4 = f(un + h*k3);
+    U(:,n+1) = un + (h/6)*(k1 + 2*k2 + 2*k3 + k4);
+end
+
+% Precompute f-values
+F = zeros(4, total_steps+1);
+for n = 1:k
+    F(:,n) = f(U(:,n));
+end
+
+% AB coefficients for k=1..3
+switch k
+    case 1
+        % AB1: y_{n+1} = y_n + h f_n
+        for n = k:total_steps
+            U(:,n+1) = U(:,n) + h * F(:,n);
+            F(:,n+1) = f(U(:,n+1));
+        end
+    case 2
+        % AB2: y_{n+1} = y_n + h*(3/2 f_n - 1/2 f_{n-1})
+        for n = k:total_steps
+            U(:,n+1) = U(:,n) + h*(3/2 * F(:,n) - 1/2 * F(:,n-1));
+            F(:,n+1) = f(U(:,n+1));
+        end
+    case 3
+        % AB3: y_{n+1} = y_n + h*(23/12 f_n - 16/12 f_{n-1} + 5/12 f_{n-2})
+        for n = k:total_steps
+            U(:,n+1) = U(:,n) + h*(23/12 * F(:,n) - 16/12 * F(:,n-1) + 5/12 * F(:,n-2));
+            F(:,n+1) = f(U(:,n+1));
+        end
+end
+
+% unpack
+X = U(1,:);
+Y = U(2,:);
+VX = U(3,:);
+VY = U(4,:);
+
+r = sqrt(X.^2 + Y.^2);
+E = 0.5*(VX.^2 + VY.^2) - 1./r;
+A = X .* VY - Y .* VX;
+
+end
